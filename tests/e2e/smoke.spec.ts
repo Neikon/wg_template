@@ -23,6 +23,10 @@ test('al empezar el juego se ocultan los elementos del lobby', async ({ page }) 
   await expect(page.getByRole('button', { name: /Copiar enlace/ })).toBeVisible()
   await expect(page.getByRole('heading', { name: /Jugadores/ })).toBeVisible()
 
+  // el QR se genera al pedirlo
+  await page.getByRole('button', { name: /Ver QR/ }).click()
+  await expect(page.getByAltText(/QR para unirse/)).toBeVisible()
+
   // el anfitrión empieza la partida
   await page.getByRole('button', { name: /Empezar trivia/ }).click()
 
