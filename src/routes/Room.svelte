@@ -268,27 +268,38 @@
 </script>
 
 <div class="container">
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap">
-    <h2>Sala <code>{salaId}</code> {#if isHost}<span style="background:var(--accent);color:var(--bg);padding:2px 6px;border-radius:4px;font-size:0.7rem">Anfitrión</span>{/if}</h2>
-    <button on:click={salir} style="background:var(--muted)">Salir</button>
-  </div>
-
   {#if toast}<div style="background:var(--success);color:var(--bg);padding:0.6rem 1rem;border-radius:8px;margin:1rem 0">{toast}</div>{/if}
   {#if salaFull}<div style="background:var(--error);color:white;padding:0.6rem 1rem;border-radius:8px;margin:1rem 0">Sala llena (20 jugadores)</div>{/if}
 
-  <ShareLink {salaId} />
+  {#if gameState.phase === 'lobby'}
+    <!-- ============ LOBBY ============ -->
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap">
+      <h2>Sala <code>{salaId}</code> {#if isHost}<span style="background:var(--accent);color:var(--bg);padding:2px 6px;border-radius:4px;font-size:0.7rem">Anfitrión</span>{/if}</h2>
+      <button on:click={salir} style="background:var(--muted)">Salir</button>
+    </div>
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem">
-    <div>
-      <h3>Jugadores</h3>
-      <PlayerList peers={peers} hostId={hostId} />
-      <div style="margin-top:1rem">
-        <h4>Cambiar nombre</h4>
-        <NameInput value={peers.find(p=>p.id===selfId)?.name || ''} on:save={onRename} />
+    <ShareLink {salaId} />
+
+    <div style="display:grid;gap:1rem;margin-top:1rem">
+      <div>
+        <Game onAction={handleGameAction} />
+      </div>
+      <div>
+        <h3>Jugadores ({peers.length}/20)</h3>
+        <PlayerList peers={peers} hostId={hostId} />
+        <div style="margin-top:1rem">
+          <h4>Cambiar nombre</h4>
+          <NameInput value={peers.find(p=>p.id===selfId)?.name || ''} on:save={onRename} />
+        </div>
       </div>
     </div>
-    <div>
-      <Game onAction={handleGameAction} />
+  {:else}
+    <!-- ============ JUEGO ============ -->
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:0.5rem;margin-bottom:0.8rem">
+      <span class="muted" style="font-size:0.85rem"><code>{salaId}</code></span>
+      <button on:click={salir} style="background:var(--muted);padding:0.3rem 0.7rem;font-size:0.85rem">Salir</button>
     </div>
-  </div>
+
+    <Game onAction={handleGameAction} />
+  {/if}
 </div>
