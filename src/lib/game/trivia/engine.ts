@@ -15,6 +15,15 @@ export function createInitialState(peers: {id:string}[]): TriviaState {
   }
 }
 
+function toResultados(state: TriviaState): TriviaState {
+  const correcta = QUESTIONS[state.preguntaIdx].correcta
+  const nextPunt = { ...state.puntuaciones }
+  for (const [pid, ans] of Object.entries(state.respuestas)) {
+    if (ans === correcta) nextPunt[pid] = (nextPunt[pid]||0)+100
+  }
+  return { ...state, phase: 'resultados', timer: 5, puntuaciones: nextPunt, version: state.version+1 }
+}
+
 export function reducer(state: TriviaState, action: TriviaAction, ctx:{isHost:boolean, peerId:string}): TriviaState {
   // solo host puede iniciar y avanzar, pero answer puede venir de cualquier peer (validado por host)
   if (action.t === 'startGame') {
@@ -29,7 +38,14 @@ export function reducer(state: TriviaState, action: TriviaAction, ctx:{isHost:bo
     if (state.timer <= 0) return state
     // validar opcion rango
     if (action.opcion <0 || action.opcion>3) return state
-    return { ...state, respuestas: { ...state.respuestas, [ctx.peerId]: action.opcion }, version: state.version+1 }
+    const respuestas = { ...state.respuestas, [ctx.peerId]: action.opcion }
+    const withAnswer = { ...state, respuestas, version: state.version+1 }
+    // si ya han respondido todos los jugadores conocidos, pasar a resultados sin esperar al timer
+    const todos = Object.keys(withAnswer.puntuaciones)
+    if (todos.length > 0 && todos.every(pid => respuestas[pid] !== undefined)) {
+      return toResultados(withAnswer)
+    }
+    return withAnswer
   }
   if (action.t === 'tick') {
     if (!ctx.isHost) return state
@@ -37,13 +53,7 @@ export function reducer(state: TriviaState, action: TriviaAction, ctx:{isHost:bo
     const nt = state.timer -1
     if (nt <= 0) {
       // auto pasar a resultados, calcular puntos
-      const correcta = QUESTIONS[state.preguntaIdx].correcta
-      const nextPunt = { ...state.puntuaciones }
-      for (const [pid, ans] of Object.entries(state.respuestas)) {
-        if (ans === correcta) nextPunt[pid] = (nextPunt[pid]||0)+100
-      }
-      // asegurar que todos tienen entrada
-      return { ...state, phase: 'resultados', timer: 5, puntuaciones: nextPunt, version: state.version+1 }
+      return toResultados(state)
     }
     return { ...state, timer: nt, version: state.version+1 }
   }

@@ -52,5 +52,17 @@ describe('trivia engine', () => {
     expect(s.phase).toBe('pregunta')
     expect(s.preguntaIdx).toBe(1)
   })
+  it('pasa a resultados en cuanto responden todos, sin esperar al timer', () => {
+    let s = createInitialState(peers)
+    s = reducer(s,{t:'startGame'} as any,{isHost:true,peerId:'a'})
+    // responde solo uno: sigue en pregunta
+    s = reducer(s,{t:'answer', opcion:1} as any,{isHost:false,peerId:'b'})
+    expect(s.phase).toBe('pregunta')
+    // responde el último: pasa a resultados con puntos (pregunta 0 correcta=1)
+    s = reducer(s,{t:'answer', opcion:1} as any,{isHost:true,peerId:'a'})
+    expect(s.phase).toBe('resultados')
+    expect(s.puntuaciones['a']).toBe(100)
+    expect(s.puntuaciones['b']).toBe(100)
+  })
 })
 
