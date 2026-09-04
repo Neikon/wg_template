@@ -5,8 +5,8 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [svelte()],
   base: process.env.VITE_BASE || '/wg_template/',
-  server: { port: 5173 },
-  preview: { port: 4173 },
+  server: { port: 5173, host: true, strictPort: true },
+  preview: { port: 4173, host: true, strictPort: true },
   test: {
     environment: 'jsdom',
     include: ['tests/**/*.test.ts']

@@ -6,7 +6,8 @@
 
 **Architecture:** SPA Svelte hash-router + Net Layer Trystero (mesh físico, host lógico autoritativo) + Stores + Game Engine puro (reducer) + registry de juegos. Ver spec para protocolo `hello/requestState/stateSync/action` con versionado.
 
-**Tech Stack:** Svelte 4, Vite 5, TypeScript 5, Trystero 0.20, svelte-spa-router o router hash manual, qrcode opcional, Vitest, Playwright opcional.
+**Tech Stack (diseño):** Svelte 4, Vite 5, TypeScript 5, Trystero 0.20, svelte-spa-router o router hash manual, qrcode opcional, Vitest, Playwright opcional.
+**Tech Stack real (scaffold 2026-09-04):** Svelte 5.56, Vite 8.2.2, TypeScript ~6.0.2, @sveltejs/vite-plugin-svelte 7, Trystero 0.20, router hash manual, Vitest 3 + jsdom.
 
 **Spec:** `docs/superpowers/specs/2026-09-04-wg-template-fiesta-design.md`
 
@@ -19,6 +20,20 @@
 - Trystero strategy `torrent` con múltiples trackers públicos, adapter switcheable.
 - Límite 20 jugadores, nombres `Jugador N` auto + rename validado (2-20 chars).
 - Host migration determinista por `joinOrder`, `stateSync` versionado + heartbeat 2s.
+
+---
+
+## Estado de ejecución (2026-09-04)
+
+- **Task 1 (scaffold):** ✅ hecho. `npm create vite test_vite -- --template svelte-ts` copiado a raíz (versiones reales arriba). `vite.config.ts` con `base=VITE_BASE || '/wg_template/'`. Commit `d7cbeb1` en `main`, pusheado a `Neikon/wg_template`.
+- **Task 2 (net layer):** ✅ hecho. `src/lib/net/{types,trysteroAdapter,room}.ts` + `src/lib/utils/{id,names}.ts` + tests `names/id/room` en PASS.
+- **Task 3 (stores):** ✅ hecho. `src/lib/stores/{roomStore,gameStore}.ts` con `initRoom`, `applyStateSync` por versión. Sin `tests/unit/stores.test.ts` (se validó vía tests de engine/room).
+- **Task 4 (UI base):** ✅ hecho. `Landing/Room/Game` + `PlayerList/ShareLink/NameInput`, router hash en `App.svelte`.
+- **Task 5 (trivia):** ✅ hecho. `src/lib/game/trivia/{types,questions,engine,Trivia}.svelte` + `registry.ts` + `tests/unit/engine.test.ts` (6 tests PASS: start/answer/doble-respuesta/tick/resultados/next).
+- **Task 6 (P2P + migración):** ✅ implementado en `Room.svelte` (`hello/requestState/stateSync/action/rename`, `electNewHost`, heartbeat 2s, timer host 1s). Sin prueba E2E real de 2 peers todavía.
+- **Task 7 (Pages + docs):** ✅ hecho. `pages.yml` (build `VITE_BASE=/wg_template/` + `deploy-pages@v4`), `404.html`, `README.md` ES con guía 5 pasos. Run `33898722403` en success, URL `https://neikon.github.io/wg_template/`.
+- **Evidencia:** `npm run check` 0 errores · `npm run test` 16/16 PASS · `npm run build` 160 módulos, JS ~127 KB (43,7 KB gzip).
+- **Pendiente:** Task 8 (devcontainer, a medio commitear) y Task 9 (bug pantalla negra) — ver final del plan.
 
 ---
 
@@ -657,3 +672,35 @@ Plan complete y guardado en `docs/superpowers/plans/2026-09-04-wg-template-fiest
 **2. Inline Execution** — ejecución en esta sesión con checkpoints
 
 ¿Cuál eliges?
+
+---
+
+### Task 8: Devcontainer portable (EN CURSO — sin commitear)
+
+**Files:**
+- Create: `.devcontainer/devcontainer.json`
+- Modify: `vite.config.ts` (`server/preview` con `host: true, strictPort: true`)
+
+**Estado 2026-09-04:** archivos creados y validados (`JSON OK`), pendientes de `git add + commit + push`.
+`.devcontainer/devcontainer.json` usa imagen `mcr.microsoft.com/devcontainers/typescript-node:22`, `postCreateCommand: npm ci`, forward `5173` (dev) + `4173` (preview), extensión `svelte.svelte-vscode`, **sin `features`** (el feature `github-cli` se eliminó el 2026-09-04: rompía el build con podman — `cp: cannot access '/tmp/build-features-src/github-cli_0': Permission denied`, ver `Zed.log` línea `docker buildx build failed`). `gh` se instala vía `.devcontainer/post-create.sh` (apt, solo si falta) y después corre `npm ci`; `postCreateCommand` invoca ese script.
+
+- [x] **Step 1:** crear `.devcontainer/devcontainer.json`
+- [x] **Step 2:** `vite.config.ts` con `host: true, strictPort: true`
+- [x] **Step 3:** validar JSON
+- [ ] **Step 4:** commit + push
+- [ ] **Step 5:** reabrir en contenedor (Zed) y verificar `npm run dev/test/build` dentro
+
+---
+
+### Task 9: Bug pantalla negra en Pages (PENDIENTE — diagnosticar en contenedor)
+
+**Síntoma:** `https://neikon.github.io/wg_template/` muestra solo el fondo oscuro (`app.css`), sin elementos.
+
+**Hipótesis principal:** `src/main.ts` usa API legacy Svelte 4 (`new App({ target })`) pero el proyecto lleva Svelte 5.56, cuya API es `mount(App, { target })` desde `svelte`. El build y `svelte-check` pasan igual, pero el montaje falla en runtime.
+
+**Pasos sugeridos:**
+- [ ] **Step 1:** abrir la URL publicada, consola del navegador, anotar el error exacto
+- [ ] **Step 2:** leer `src/main.ts` + versión `svelte` en `package.json`
+- [ ] **Step 3:** migrar `main.ts` a `mount()` según docs de Svelte 5 (mantener `import './app.css'`)
+- [ ] **Step 4:** `npm run check && npm run test && npm run build`, probar `vite preview` + 2 pestañas `#/sala/<id>`
+- [ ] **Step 5:** commit + push, esperar run de Pages en success, re-verificar URL pública
