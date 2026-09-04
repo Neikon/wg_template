@@ -1,9 +1,12 @@
 <script lang="ts">
   import qrcode from 'qrcode-generator'
   export let salaId: string
+  export let juegoId: string
   let copied=false
   let showQR=false
-  $: link = typeof location !== 'undefined' ? `${location.origin}${import.meta.env.BASE_URL}#/sala/${salaId}` : ''
+  $: link = typeof location !== 'undefined'
+    ? `${location.origin}${import.meta.env.BASE_URL}#/sala/${salaId}?juego=${encodeURIComponent(juegoId)}`
+    : ''
   $: qrUrl = (()=>{ try {
     const qr = qrcode(0, 'M')
     qr.addData(link)

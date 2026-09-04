@@ -1,12 +1,14 @@
 <script lang="ts">
-  import { gameStore } from '../lib/stores/gameStore'
-  import { roomStore } from '../lib/stores/roomStore'
-  import { registry, currentGame } from '../lib/game/registry'
+  import { registry } from '../lib/game/registry'
+  export let juegoId: string
   export let onAction: (a:any)=>void
-  $: comp = registry[currentGame]?.Component
+  $: comp = registry[juegoId]?.Component
 </script>
 {#if comp}
   <svelte:component this={comp} onAction={onAction} />
 {:else}
-  <p>Juego no encontrado</p>
+  <div class="card" role="alert">
+    <h2>Juego no disponible</h2>
+    <p class="muted">Esta versión no tiene registrado el juego <code>{juegoId}</code>.</p>
+  </div>
 {/if}

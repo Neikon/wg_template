@@ -5,7 +5,7 @@
   import { assignName, sanitizeName } from '../lib/utils/names'
   import { electNewHost, isRoomFull } from '../lib/net/room'
   import { joinTrystero } from '../lib/net/trysteroAdapter'
-  import { createInitialState, reducer } from '../lib/game/trivia/engine'
+  import { DEFAULT_GAME_ID, getGameModule, getGameOptions } from '../lib/game/registry'
   import PlayerList from '../components/PlayerList.svelte'
   import ShareLink from '../components/ShareLink.svelte'
   import NameInput from '../components/NameInput.svelte'
@@ -14,6 +14,8 @@
   let salaId = ''
   let isHostParam = false
   let initialName = ''
+  let juegoId = DEFAULT_GAME_ID
+  const gameOptions = getGameOptions()
   let trystero: any = null
   let unsubRoom: any
   let unsubGame: any
@@ -22,11 +24,12 @@
   let hostId = ''
   let isHost = false
   let peers: any[] = []
-  let gameState: any = { phase:'lobby', version:0 }
+  let gameState: any = { phase:'lobby', version:0, gameId: DEFAULT_GAME_ID }
   let salaFull = false
   let toast = ''
   let timerInt: any = null
   let heartbeat: any = null
+  const transportToLogicalPeer = new Map<string, string>()
 
   function parseHash(){
     const hash = location.hash // #/sala/abcd12?host=1&name=...
@@ -35,6 +38,7 @@
     const q = new URLSearchParams(hash.split('?')[1] || '')
     isHostParam = q.get('host') === '1'
     initialName = q.get('name') ? decodeURIComponent(q.get('name')!) : ''
+    juegoId = q.get('juego') || DEFAULT_GAME_ID
   }
 
   function showToast(msg:string){
@@ -44,15 +48,20 @@
   function broadcastState(){
     if (!trystero || !isHost) return
     const fullState = gameState
-    const msg = { t:'stateSync', fullState, version: fullState.version, hostId, peers, joinOrder }
+    const msg = { t:'stateSync', juegoId, fullState, version: fullState.version, hostId, peers, joinOrder }
     trystero.send(msg)
   }
 
   function handleAction(action:any, from:string){
     // solo host aplica reducer
     if (!isHost) return
-    const ctx = { isHost, peerId: from }
-    const next = reducer(gameState, action, ctx)
+    const game = getGameModule(juegoId)
+    if (!game) return
+    if (action.t === 'startGame' && action.juegoId && action.juegoId !== juegoId) return
+    // El reducer corre en el host, pero ctx.isHost describe al autor de la acción.
+    // Así un invitado puede responder/votar sin poder iniciar o avanzar la partida.
+    const ctx = { isHost: from === hostId, peerId: from }
+    const next = game.reducer(gameState, action, ctx)
     if (next !== gameState) {
       gameState = next
       gameStore.set(gameState)
@@ -60,12 +69,33 @@
     }
   }
 
+  function updateGameInHash(nextJuegoId:string){
+    const [route, rawQuery = ''] = location.hash.split('?')
+    const query = new URLSearchParams(rawQuery)
+    query.set('juego', nextJuegoId)
+    history.replaceState(null, '', `${location.pathname}${location.search}${route}?${query}`)
+  }
+
+  function selectGame(event:Event){
+    if (!isHost || gameState.phase !== 'lobby') return
+    const nextJuegoId = (event.currentTarget as HTMLSelectElement).value
+    const game = getGameModule(nextJuegoId)
+    if (!game || nextJuegoId === juegoId) return
+    const nextVersion = (gameState.version ?? 0) + 1
+    juegoId = nextJuegoId
+    const nextState = game.createInitialState(peers)
+    gameState = { ...nextState, version: nextVersion }
+    gameStore.set(gameState)
+    updateGameInHash(juegoId)
+    broadcastState()
+  }
+
   function startTimerAndHeartbeat(){
     if (timerInt) clearInterval(timerInt)
     if (heartbeat) clearInterval(heartbeat)
-    // timer solo si host y en pregunta
+    // El host ofrece un pulso genérico; cada reducer decide si usa `tick`.
     timerInt = setInterval(()=>{
-      if (isHost && gameState.phase === 'pregunta') {
+      if (isHost) {
         handleAction({t:'tick'}, selfId)
       }
     }, 1000)
@@ -78,21 +108,29 @@
   onMount(()=>{
     parseHash()
     if (!salaId) { location.hash = '#/'; return }
+    // el id recién parseado manda: la suscripción al store dispara primero con
+    // datos de una sala anterior y no debe pisarlo (ver roadmap punto 4)
+    const freshSalaId = salaId
+    // estado limpio al (re)entrar en una sala: el store puede traer datos de otra anterior
+    gameStore.set({ phase: 'lobby', version: 0, gameId: juegoId })
     // nombre inicial: del query o Jugador N (se asignará tras ver peers)
     let nameToUse = initialName && sanitizeName(initialName) ? sanitizeName(initialName)! : ''
-    // suscribirse a stores
+    // suscribirse a stores (sin sincronizar salaId: es fijo durante la vida de Room)
     unsubRoom = roomStore.subscribe(v=>{
-      peers = v.peers; hostId = v.hostId; isHost = v.isHost; selfId = v.selfId; salaId = v.salaId || salaId; joinOrder = v.joinOrder
+      peers = v.peers; hostId = v.hostId; isHost = v.isHost; selfId = v.selfId; joinOrder = v.joinOrder
     })
     unsubGame = gameStore.subscribe(v=> gameState = v)
 
     // iniciar room
     if (isHostParam) {
       if (!nameToUse) nameToUse = assignName(1)
-      initRoom(salaId, nameToUse, true)
+      initRoom(freshSalaId, nameToUse, true)
       // init game
       const initPeers = [{id: selfId, name: nameToUse}] as any
-      const initState = createInitialState(initPeers)
+      const game = getGameModule(juegoId)
+      const initState = game
+        ? game.createInitialState(initPeers)
+        : { phase: 'lobby', version: 0, gameId: juegoId }
       gameStore.set(initState); gameState = initState
     } else {
       // guest: asignaremos nombre tras conectar, provisional
@@ -100,12 +138,12 @@
         // se asignará al recibir peers, por ahora Jugador ?
         nameToUse = assignName(2)
       }
-      initRoom(salaId, nameToUse, false)
+      initRoom(freshSalaId, nameToUse, false)
     }
 
     // conectar Trystero
     try {
-      trystero = joinTrystero(salaId)
+      trystero = joinTrystero(freshSalaId)
     } catch(e){
       console.error('Trystero error', e)
       showToast('Error conectando P2P')
@@ -116,6 +154,7 @@
     trystero.get((msg:any, peerId:string)=>{
       if (!msg || !msg.t) return
       if (msg.t === 'hello') {
+        transportToLogicalPeer.set(peerId, msg.peerId)
         // solo host gestiona hello
         if (isHost) {
           if (isRoomFull(peers.length)) {
@@ -127,20 +166,23 @@
             const newPeer = { id: msg.peerId, name: msg.name, joinTime: msg.joinTime }
             peers = [...peers, newPeer]
             joinOrder = [...joinOrder, msg.peerId]
-            // asegurar puntuaciones para nuevo peer
-            if (gameState.puntuaciones && gameState.puntuaciones[msg.peerId]===undefined) {
-              gameState.puntuaciones[msg.peerId]=0
-              gameState.version++
-            }
             roomStore.update(v=>({...v, peers, joinOrder, version: v.version+1}))
-            broadcastState()
+            const previousState = gameState
+            handleAction({ t: 'playerJoined', peerId: msg.peerId }, selfId)
+            if (gameState === previousState) broadcastState()
           }
         }
       } else if (msg.t === 'requestState') {
         if (isHost) broadcastState()
       } else if (msg.t === 'stateSync') {
+        const incomingJuegoId = msg.juegoId || msg.fullState?.gameId || DEFAULT_GAME_ID
+        const gameChanged = incomingJuegoId !== juegoId
+        if (gameChanged) {
+          juegoId = incomingJuegoId
+          updateGameInHash(juegoId)
+        }
         // validar version
-        if (msg.version !== undefined && gameState.version !== undefined && msg.version <= gameState.version) {
+        if (!gameChanged && msg.version !== undefined && gameState.version !== undefined && msg.version <= gameState.version) {
           // ignorar viejo
           // pero actualizar peers/joinOrder si host cambió
         } else {
@@ -163,10 +205,12 @@
           }
         }
       } else if (msg.t === 'action') {
-        handleAction(msg.action, msg.from)
+        const logicalPeerId = transportToLogicalPeer.get(peerId) || msg.from
+        if (!msg.juegoId || msg.juegoId === juegoId) handleAction(msg.action, logicalPeerId)
       } else if (msg.t === 'rename') {
         if (isHost) {
-          peers = peers.map((p:any)=> p.id===msg.peerId ? {...p, name: msg.newName} : p)
+          const logicalPeerId = transportToLogicalPeer.get(peerId) || msg.peerId
+          peers = peers.map((p:any)=> p.id===logicalPeerId ? {...p, name: msg.newName} : p)
           roomStore.update(v=>({...v, peers}))
           broadcastState()
         }
@@ -189,7 +233,9 @@
       }, 1200)
     })
 
-    trystero.onPeerLeave((id:string)=>{
+    trystero.onPeerLeave((transportPeerId:string)=>{
+      const id = transportToLogicalPeer.get(transportPeerId) || transportPeerId
+      transportToLogicalPeer.delete(transportPeerId)
       const wasHost = id === hostId
       peers = peers.filter((p:any)=>p.id!==id)
       // joinOrder se mantiene para elección determinista, pero connected set cambia
@@ -204,7 +250,6 @@
           roomStore.update(v=>({...v, hostId, isHost}))
           if (amNewHost) {
             showToast('El anfitrión se fue — ahora eres el anfitrión')
-            // asegurar gameState tiene puntuaciones para todos
             broadcastState()
           } else {
             showToast('Anfitrión migrado a ' + (peers.find((p:any)=>p.id===newHost)?.name || newHost.slice(0,4)))
@@ -254,10 +299,11 @@
   }
 
   function handleGameAction(a:any){
+    const action = a.t === 'startGame' ? { ...a, juegoId } : a
     if (isHost) {
-      handleAction(a, selfId)
+      handleAction(action, selfId)
     } else {
-      trystero.send({t:'action', action:a, from: selfId})
+      trystero.send({t:'action', juegoId, action, from: selfId})
     }
   }
 
@@ -278,11 +324,23 @@
       <button on:click={salir} style="background:var(--muted)">Salir</button>
     </div>
 
-    <ShareLink {salaId} />
+    <ShareLink {salaId} {juegoId} />
 
     <div style="display:grid;gap:1rem;margin-top:1rem">
       <div>
-        <Game onAction={handleGameAction} />
+        {#if isHost}
+          <div class="card" style="margin-bottom:1rem">
+            <label for="game-selector">Juego</label>
+            <select id="game-selector" value={juegoId} on:change={selectGame}>
+              {#each gameOptions as game}
+                <option value={game.id}>{game.nombre}</option>
+              {/each}
+            </select>
+          </div>
+        {:else}
+          <p class="muted">Juego: {getGameModule(juegoId)?.nombre ?? juegoId}</p>
+        {/if}
+        <Game {juegoId} onAction={handleGameAction} />
       </div>
       <div>
         <h3>Jugadores ({peers.length}/20)</h3>
@@ -300,6 +358,6 @@
       <button on:click={salir} style="background:var(--muted);padding:0.3rem 0.7rem;font-size:0.85rem">Salir</button>
     </div>
 
-    <Game onAction={handleGameAction} />
+    <Game {juegoId} onAction={handleGameAction} />
   {/if}
 </div>

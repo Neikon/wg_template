@@ -4,7 +4,7 @@ Plantilla base para juegos de fiesta multijugador en navegador. **Sin servidor n
 
 - **Stack:** Svelte + Vite + TypeScript + Trystero (WebRTC P2P via trackers públicos)
 - **Flujo:** Crear sala → compartir enlace `#/sala/<id>` → lobby → juego
-- **Demo incluido:** Trivia 10 preguntas
+- **Demos incluidas:** trivia configurable y votación mínima
 - **Host migration:** Si el anfitrión se va, el siguiente jugador toma el control sin perder estado
 
 ## Uso rápido
@@ -22,38 +22,27 @@ Usa [Trystero](https://github.com/dmotz/trystero) (strategy `torrent`) que se co
 
 Alternativa: cambiar `src/lib/net/trysteroAdapter.ts` por PeerJS si prefieres.
 
-## Crear tu propio juego en 5 pasos
+## Crear tu propio juego
 
-1. Crea carpeta `src/lib/game/miJuego/` con:
-   - `types.ts` (estado y acciones)
-   - `engine.ts` (`createInitialState(peers)` + `reducer(state, action, ctx)`)
-   - `MiJuego.svelte` (UI, recibe `onAction`)
+Sigue la guía de tres pasos en [`docs/NUEVO-JUEGO.md`](docs/NUEVO-JUEGO.md). Incluye
+el contrato `GameModule`, las reglas del reducer, el registro, los tests y la prueba
+directa con `?juego=`. `src/lib/game/votacion/` es el ejemplo mínimo para copiar.
 
-2. Implementa el módulo (ejemplo trivia: ver `src/lib/game/trivia/engine.ts`):
+El anfitrión elige cualquier juego registrado desde el lobby; la selección viaja en
+el enlace de invitación y se sincroniza por P2P.
 
-```ts
-export function createInitialState(peers){ return {phase:'lobby', version:0} }
-export function reducer(state, action, {isHost, peerId}){
-  if (action.t==='miAccion' && isHost) return {...state, version: state.version+1}
-  return state
-}
+## Pruebas
+
+```bash
+npm run check
+npm run test
+npm run build
+npx playwright install --with-deps chromium  # solo la primera vez
+npm run test:e2e
+E2E_P2P=1 npm run test:e2e  # exige la prueba real de dos navegadores
 ```
 
-3. Registra en `src/lib/game/registry.ts`:
-
-```ts
-import * as miJuego from './miJuego/engine'
-import MiJuegoComp from './miJuego/MiJuego.svelte'
-export const registry = {
-  trivia: { id:'trivia', ...trivia, Component: TriviaComp },
-  miJuego: { id:'miJuego', createInitialState: miJuego.createInitialState, reducer: miJuego.reducer, Component: MiJuegoComp }
-}
-export const currentGame = 'miJuego'
-```
-
-4. Cambia `currentGame` o permite elegir juego en lobby.
-
-5. `npm run build` y prueba con 2 pestañas.
+La prueba P2P se salta si no logra alcanzar los trackers, salvo cuando `E2E_P2P=1`.
 
 ## Deploy a GitHub Pages
 
@@ -66,7 +55,7 @@ export const currentGame = 'miJuego'
 ```
 src/lib/net/      # P2P (Trystero adapter, helpers)
 src/lib/stores/   # roomStore, gameStore
-src/lib/game/     # engine + trivia demo + registry
+src/lib/game/     # contrato + registry + juegos trivia/votación
 src/routes/       # Landing, Room, Game
 src/components/   # PlayerList, ShareLink, NameInput
 ```

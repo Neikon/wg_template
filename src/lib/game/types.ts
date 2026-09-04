@@ -1,6 +1,24 @@
-export interface GameModule<S,A> {
+export interface GamePeer {
   id: string
-  createInitialState(peers: any[]): S
-  reducer(state: S, action: A, ctx: { isHost: boolean; peerId: string }): S
+  name?: string
+  joinTime?: number
+}
+
+export interface GameState {
+  phase: string
+  version: number
+  gameId: string
+}
+
+export interface GameContext {
+  isHost: boolean
+  peerId: string
+}
+
+export interface GameModule<S extends GameState = GameState, A = { t: string }> {
+  id: string
+  nombre: string
+  createInitialState(peers: GamePeer[]): S
+  reducer(state: S, action: A, ctx: GameContext): S
   Component?: any
 }

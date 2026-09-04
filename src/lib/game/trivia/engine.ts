@@ -1,7 +1,24 @@
-import type { TriviaState, TriviaAction } from './types'
-import { QUESTIONS } from './questions'
+import type { TriviaState, TriviaAction, TriviaConfig, TriviaCategoria } from './types'
+import { CATEGORIAS, QUESTIONS, questionsFor } from './questions'
 
-export function createInitialState(peers: {id:string}[]): TriviaState {
+export const DEFAULT_CONFIG: TriviaConfig = {
+  numPreguntas: QUESTIONS.length,
+  segundos: 20,
+  categoria: 'todas'
+}
+
+function normalizeConfig(input?: Partial<TriviaConfig>): TriviaConfig {
+  const categoria = CATEGORIAS.some(c => c.id === input?.categoria)
+    ? input!.categoria as TriviaCategoria
+    : DEFAULT_CONFIG.categoria
+  const disponibles = questionsFor(categoria).length
+  const numPreguntas = Math.max(1, Math.min(disponibles, Math.trunc(input?.numPreguntas ?? DEFAULT_CONFIG.numPreguntas)))
+  const segundos = Math.max(5, Math.min(120, Math.trunc(input?.segundos ?? DEFAULT_CONFIG.segundos)))
+  return { numPreguntas, segundos, categoria }
+}
+
+export function createInitialState(peers: {id:string}[], config: Partial<TriviaConfig> = {}): TriviaState {
+  const normalized = normalizeConfig(config)
   const puntuaciones: Record<string,number> = {}
   for (const p of peers) puntuaciones[p.id]=0
   return {
@@ -9,14 +26,15 @@ export function createInitialState(peers: {id:string}[]): TriviaState {
     preguntaIdx: 0,
     respuestas: {},
     puntuaciones,
-    timer: 20,
+    timer: normalized.segundos,
     version: 0,
-    gameId: 'trivia'
+    gameId: 'trivia',
+    config: normalized
   }
 }
 
 function toResultados(state: TriviaState): TriviaState {
-  const correcta = QUESTIONS[state.preguntaIdx].correcta
+  const correcta = questionsFor(state.config.categoria)[state.preguntaIdx].correcta
   const nextPunt = { ...state.puntuaciones }
   for (const [pid, ans] of Object.entries(state.respuestas)) {
     if (ans === correcta) nextPunt[pid] = (nextPunt[pid]||0)+100
@@ -29,8 +47,8 @@ export function reducer(state: TriviaState, action: TriviaAction, ctx:{isHost:bo
   if (action.t === 'startGame') {
     if (!ctx.isHost) return state
     if (state.phase !== 'lobby' && state.phase !== 'final') return state
-    // asegurar puntuaciones para todos los peers conocidos (se rellenará al sincronizar)
-    return { ...state, phase: 'pregunta', preguntaIdx: 0, respuestas: {}, timer: 20, version: state.version+1 }
+    const config = normalizeConfig(action.config ?? state.config)
+    return { ...state, phase: 'pregunta', preguntaIdx: 0, respuestas: {}, timer: config.segundos, config, version: state.version+1 }
   }
   if (action.t === 'answer') {
     if (state.phase !== 'pregunta') return state
@@ -61,14 +79,23 @@ export function reducer(state: TriviaState, action: TriviaAction, ctx:{isHost:bo
     if (!ctx.isHost) return state
     if (state.phase !== 'resultados') return state
     const ni = state.preguntaIdx +1
-    if (ni >= QUESTIONS.length) {
+    if (ni >= state.config.numPreguntas) {
       return { ...state, phase: 'final', version: state.version+1 }
     }
-    return { ...state, phase: 'pregunta', preguntaIdx: ni, respuestas: {}, timer: 20, version: state.version+1 }
+    return { ...state, phase: 'pregunta', preguntaIdx: ni, respuestas: {}, timer: state.config.segundos, version: state.version+1 }
   }
   if (action.t === 'restart') {
     if (!ctx.isHost) return state
-    return createInitialState(Object.keys(state.puntuaciones).map(id=>({id})))
+    const restarted = createInitialState(Object.keys(state.puntuaciones).map(id=>({id})), state.config)
+    return { ...restarted, version: state.version + 1 }
+  }
+  if (action.t === 'playerJoined') {
+    if (!ctx.isHost || state.puntuaciones[action.peerId] !== undefined) return state
+    return {
+      ...state,
+      puntuaciones: { ...state.puntuaciones, [action.peerId]: 0 },
+      version: state.version + 1
+    }
   }
   return state
 }

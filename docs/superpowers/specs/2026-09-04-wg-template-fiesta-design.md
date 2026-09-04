@@ -187,7 +187,7 @@ wg_template/
 
 - Persistencia DB, login, ranking global.
 - Chat de voz/video.
-- Más de 1 juego demo (solo trivia).
+- Más juegos aparte de las demos de trivia y votación añadidas por el roadmap.
 
 ---
 
@@ -202,6 +202,22 @@ wg_template/
 ---
 
 ## 11. Estado de implementación (2026-09-04)
+
+### Roadmap local completado
+
+> Actualización del roadmap: la cobertura E2E P2P real usa dos contextos de navegador.
+> Depende de los trackers públicos y puede saltarse cuando no son accesibles; definir
+> `E2E_P2P=1` la convierte en obligatoria para una ejecución local o CI con red.
+
+- `Room.svelte` y `Game.svelte` resuelven el juego por registry y sincronizan `juegoId`.
+- Trivia configurable por número de preguntas, segundos y categoría; votación como
+  segundo juego y ejemplo mínimo.
+- Verificación local: `check` sin errores, 24 tests unitarios, build correcto y seis
+  E2E en verde, incluido el caso P2P obligatorio con `E2E_P2P=1`.
+- Estos cambios están sin commitear; la información que sigue describe la base publicada
+  antes del roadmap.
+
+### Base publicada antes del roadmap
 
 - **Repo:** `Neikon/wg_template`, rama `main`, commit `d7cbeb1` ("feat: scaffold fiesta P2P plantilla") pusheado a `origin`. Remoto: `https://github.com/Neikon/wg_template.git`.
 - **Despliegue:** Pages habilitado (`build_type=workflow`). Run `33898722403` → `build ✅ deploy ✅`. URL viva: `https://neikon.github.io/wg_template/` (el primer run `33898615747` falló solo por Pages aún no habilitado).

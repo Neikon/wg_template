@@ -27,7 +27,7 @@ button {
 }
 button:hover { background: var(--accent-hover) }
 button:disabled { opacity: 0.5; cursor: not-allowed }
-input {
+input, select {
   background: var(--card);
   color: var(--fg);
   border: 1px solid var(--muted);

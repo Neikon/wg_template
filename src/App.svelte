@@ -18,11 +18,14 @@
     // si path vacío, ir a landing
     if (!location.hash) location.hash = '#/'
   })
+  $: salaId = (path.match(/#\/sala\/([a-z0-9]{6})/) || [])[1] || ''
 </script>
 
 <main>
   {#if path.startsWith('#/sala/')}
-    <Room />
+    {#key salaId}
+      <Room />
+    {/key}
   {:else}
     <Landing />
   {/if}
