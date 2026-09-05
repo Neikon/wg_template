@@ -5,7 +5,7 @@
 **Stack (diseño):** Svelte 4 + Vite 5 + TypeScript + Trystero 0.20 — SPA hash-router — GitHub Pages estático
 **Stack real (scaffold verificado 2026-09-04):** Svelte 5.56 + Vite 8.2.2 + TypeScript ~6.0.2 + @sveltejs/vite-plugin-svelte 7 + Trystero 0.20 + Vitest 3 + jsdom (plantilla `create-vite` svelte-ts)
 **Idioma plantilla:** ES
-**Última actualización:** 2026-09-04 — scaffold implementado, desplegado en Pages, bug visual pendiente (ver §11)
+**Última actualización:** 2026-09-05 — roadmap 1–5 cerrado y publicado (`94570b2`); bug visual resuelto (ver §11)
 
 ---
 
@@ -214,8 +214,8 @@ wg_template/
   segundo juego y ejemplo mínimo.
 - Verificación local: `check` sin errores, 24 tests unitarios, build correcto y seis
   E2E en verde, incluido el caso P2P obligatorio con `E2E_P2P=1`.
-- Estos cambios están sin commitear; la información que sigue describe la base publicada
-  antes del roadmap.
+- Estos cambios están commiteados y publicados (`94570b2` en `origin/main`, deploy
+  a Pages en success); la información que sigue describe la base publicada antes del roadmap.
 
 ### Base publicada antes del roadmap
 
@@ -224,5 +224,5 @@ wg_template/
 - **Verificación local (toolbox `Fedora-gpu`, node 22):** `npm run check` → svelte-check 0 errores; `npm run test` → 4 suites / 16 tests PASS (`names`, `id`, `room`, `engine`); `npm run build` → 160 módulos, `dist/assets/*.js` ~127 KB (43,7 KB gzip), `base=/wg_template/` correcto en `dist/index.html`.
 - **Desviación del diseño:** el scaffold real es Svelte 5 + Vite 8 (no Svelte 4 + Vite 5). `src/main.ts` aún usa la API legacy `new App({ target })`; en Svelte 5 la API es `mount()`. `svelte-check` y el build no lo detectan, pero es la **hipótesis principal del bug pendiente**.
 - **Devcontainer (SIN commitear):** `.devcontainer/devcontainer.json` (imagen `typescript-node:22`, `postCreateCommand: npm ci`, forward `5173/4173`, extensión `svelte.svelte-vscode`, feature `github-cli`) + `vite.config.ts` con `server/preview: { host: true, strictPort: true }` para exponer Vite desde el contenedor. Estado: `M vite.config.ts`, `?? .devcontainer/`.
-- **Bug pendiente (NO arreglado a petición del usuario):** la página publicada muestra solo el fondo oscuro, sin elementos. Pendiente de diagnosticar dentro del contenedor (empezar por consola del navegador + `src/main.ts` vs API Svelte 5).
+- **Bug visual (resuelto):** la página publicada mostraba solo el fondo oscuro. Causa: `src/main.ts` usaba la API legacy `new App()` en vez de `mount()` de Svelte 5 (corregido en `30f6f23`). Verificado 2026-09-05: la landing renderiza en local (e2e) y en producción (`https://neikon.github.io/wg_template/` muestra título, input de nombre y botón "Crear sala").
 - **Entorno del host:** Bazzite (Fedora atomic), sin `node`/`npm` locales; se usó `podman` + toolbox `Fedora-gpu` (node v22.23.1). El usuario trabaja con **Zed** (no VS Code).

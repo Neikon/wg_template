@@ -12,7 +12,7 @@ Red P2P con Trystero (`torrent`, trackers públicos, sin cuentas). Host-autorita
 
 - **Spec (diseño + §11 estado de implementación):** `docs/superpowers/specs/2026-09-04-wg-template-fiesta-design.md`
 - **Plan base (histórico):** `docs/superpowers/plans/2026-09-04-wg-template-fiesta-implementation.md`
-- **Roadmap actual (puntos 1–5):** `docs/ROADMAP.md`
+- **Roadmap (puntos 1–5, cerrado):** `docs/ROADMAP.md`
 - **Este archivo** es solo el índice/handoff; consulta esos documentos para el detalle.
 
 ## Mapa de código
@@ -50,8 +50,7 @@ npm run test:e2e  # Playwright; E2E_P2P=1 hace obligatorio el caso de trackers
   trivia configurable, limpieza entre salas y E2E de dos jugadores.
 - ✅ Verificación local: `check` 0 errores · `test` 24/24 · `build` correcto ·
   `test:e2e` 6/6 (incluida conexión P2P real).
-- 🟡 **Sin commitear:** implementación completa de `docs/ROADMAP.md`; revisar el diff,
-  hacer commit/push y verificar Pages.
+- ✅ Roadmap 1–5 cerrado y publicado (`94570b2` en `origin/main`).
 
 ## Entorno
 
@@ -61,6 +60,6 @@ npm run test:e2e  # Playwright; E2E_P2P=1 hace obligatorio el caso de trackers
 
 ## Al retomar
 
-1. Lee `docs/ROADMAP.md` y revisa el diff local antes de modificar nada.
+1. Lee `docs/ROADMAP.md` (puntos 1–5 cerrados) y revisa el diff local antes de modificar nada.
 2. Repite `check/test/build/test:e2e` si cambia código.
-3. Commit/push de la implementación del roadmap y verifica Pages con dos navegadores.
+3. Siguiente: ampliar con más juegos (`docs/NUEVO-JUEGO.md`) o mejoras del selector/config.
