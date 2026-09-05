@@ -16,7 +16,7 @@ test('sincroniza host e invitado a través de la red P2P', async ({ browser }, t
     const salaId = host.url().match(/#\/sala\/([a-z0-9]{6})/)?.[1]
     expect(salaId).toBeTruthy()
 
-    await guest.goto(`${baseURL}#/sala/${salaId}?name=Jugador%202&juego=trivia`)
+    await guest.goto(`${baseURL}#/sala/${salaId}?name=Jugador%202`)
 
     try {
       await expect(host.getByText('Jugador 2')).toBeVisible({ timeout: 15_000 })

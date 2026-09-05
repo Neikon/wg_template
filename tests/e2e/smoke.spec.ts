@@ -57,26 +57,8 @@ test('crear una segunda sala muestra datos limpios de la nueva', async ({ page }
   await expect(page.getByText('1/20 jugadores')).toBeVisible()
 })
 
-test('selecciona un juego desde la URL y permite volver a trivia', async ({ page }) => {
-  await page.goto('#/sala/vota01?host=1&name=Ana&juego=votacion')
-
-  await expect(page.getByRole('heading', { name: 'Votación rápida' })).toBeVisible()
-  await expect(page.getByLabel('Juego')).toHaveValue('votacion')
-  await expect(page.locator('input[readonly]')).toHaveValue(/\?juego=votacion$/)
-
-  await page.getByRole('button', { name: 'Empezar votación' }).click()
-  await expect(page.getByRole('heading', { name: '¿Qué cenamos?' })).toBeVisible()
-  await page.getByRole('button', { name: 'Tacos' }).click()
-  await expect(page.getByText('Tacos: 1 voto')).toBeVisible()
-  await page.getByRole('button', { name: 'Nueva votación' }).click()
-
-  await page.getByLabel('Juego').selectOption('trivia')
-  await expect(page.getByRole('button', { name: /Empezar trivia/ })).toBeVisible()
-  await expect(page).toHaveURL(/\?host=1&name=Ana&juego=trivia$/)
-})
-
 test('configura y termina una trivia de dos preguntas', async ({ page }) => {
-  await page.goto('#/sala/corta1?host=1&name=Ana&juego=trivia')
+  await page.goto('#/sala/corta1?host=1&name=Ana')
 
   await page.getByLabel('Número de preguntas').fill('2')
   await page.getByLabel('Segundos por pregunta').fill('5')

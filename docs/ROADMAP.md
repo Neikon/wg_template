@@ -1,8 +1,9 @@
 # Roadmap — wg_template (plantilla fiesta P2P)
 
-> Estado a 2026-09-04: puntos 1–5 completados. La plantilla incluye trivia
-> configurable, votación mínima, selector de juego sincronizado, salas limpias y
-> cobertura Playwright de uno y dos jugadores.
+> Estado a 2026-09-05: puntos 1–6 completados. La plantilla es de un solo juego
+> (trivia configurable como demo a reemplazar), sin selector ni `?juego=`; cada
+> juego nuevo se deriva con `docs/NUEVO-REPO.md`. Cobertura Playwright de uno y
+> dos jugadores intacta.
 
 ---
 
@@ -141,6 +142,32 @@ el invitado ve jugadores y preguntas, responde, y el host lo refleja.
 
 **Criterio de done:** el spec pasa en local con red y se salta limpiamente sin ella.
 **Depende de:** punto 4 (salas limpias) para resultados fiables.
+
+---
+
+## 6. Plantilla de un juego + guía de derivación
+
+**Problema:** el roadmap 1–5 dejó un hub multi-juego (votación + selector
+sincronizado + `?juego=`). Cada juego añadido complica la base; el modelo
+elegido es un repo por juego derivado de esta plantilla.
+
+**Objetivo:** base esbelta de un solo juego (trivia como demo a reemplazar) y
+guía de derivación. Crear un juego = `Use this template`, nunca añadir al hub.
+
+**Plan de acción:**
+- [x] **6.1** Eliminar `src/lib/game/votacion/` + `tests/unit/votacion.test.ts`;
+  registry solo-trivia (fuera `getGameOptions`).
+- [x] **6.2** Quitar selector del lobby y `?juego=` (`Room.svelte`, `ShareLink`);
+  `juegoId` siempre `DEFAULT_GAME_ID`; protocolo `Msg` intacto.
+- [x] **6.3** Actualizar tests: `registry.test.ts` de un juego, borrar el smoke
+  de selección, URLs e2e sin `?juego=`.
+- [x] **6.4** Escribir `docs/NUEVO-REPO.md` (derivación + checklist de renombres
+  con `appId` obligatorio); actualizar README, `NUEVO-JUEGO.md`, `AGENTS.md`.
+- [x] **6.5** Verificación: `check` 0 errores, `test` 21/21, `build` correcto,
+  `test:e2e` 5/5 (P2P real incluido).
+
+**Criterio de done:** la base no contiene código específico de más de un juego y
+un repo derivado solo necesita renombrar + sustituir la demo.
 
 ---
 

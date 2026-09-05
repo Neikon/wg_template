@@ -3,9 +3,8 @@
 Un juego de `wg_template` es un estado serializable, un reducer puro y un componente
 Svelte. La sala, el lobby y la red P2P no necesitan conocer sus reglas.
 
-El ejemplo mínimo es [`src/lib/game/votacion/`](../src/lib/game/votacion/): una sola
-fase jugable, una acción `votar` y ningún temporizador. La trivia muestra un ejemplo
-más completo con configuración y varias fases.
+El ejemplo de referencia es [`src/lib/game/trivia/`](../src/lib/game/trivia/):
+configuración de partida, temporizador y varias fases. Cópialo y simplifica.
 
 ## 1. Crea estado, acciones y reducer
 
@@ -94,8 +93,10 @@ prop `onAction`:
 {/if}
 ```
 
-Añade una entrada en `src/lib/game/registry.ts` con `id`, nombre, las dos funciones y
-el componente. No cambies `Room.svelte`, `Game.svelte` ni `src/lib/net/`:
+Sustituye la entrada de la demo en `src/lib/game/registry.ts` por la tuya (`id`,
+nombre, las dos funciones y el componente); borra `src/lib/game/trivia/` o
+consérvala fuera del registry como referencia. No cambies `Room.svelte`,
+`Game.svelte` ni `src/lib/net/`:
 
 ```ts
 miJuego: {
@@ -107,7 +108,7 @@ miJuego: {
 }
 ```
 
-El `id` debe coincidir en el registry, `gameId`, `juegoId` y la URL.
+El `id` debe coincidir en el registry, `gameId` y `juegoId`.
 
 ## 3. Prueba el engine y la integración
 
@@ -128,9 +129,10 @@ npm run test:e2e
 Para abrirlo directamente como anfitrión durante el desarrollo:
 
 ```text
-http://localhost:5173/wg_template/#/sala/prueba?host=1&name=Ana&juego=mi-juego
+http://localhost:5173/wg_template/#/sala/prueba?host=1&name=Ana
 ```
 
+La plantilla trae un solo juego registrado: al abrir la sala verás el tuyo.
 Los ids de sala reales tienen seis caracteres; `prueba` es válido para este ejemplo.
 Comprueba también dos pestañas con el enlace que muestra el lobby. La prueba automatizada
 P2P real se exige con `E2E_P2P=1 npm run test:e2e`; necesita salida a los trackers

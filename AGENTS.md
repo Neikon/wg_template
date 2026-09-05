@@ -12,31 +12,30 @@ Red P2P con Trystero (`torrent`, trackers públicos, sin cuentas). Host-autorita
 
 - **Spec (diseño + §11 estado de implementación):** `docs/superpowers/specs/2026-09-04-wg-template-fiesta-design.md`
 - **Plan base (histórico):** `docs/superpowers/plans/2026-09-04-wg-template-fiesta-implementation.md`
-- **Roadmap (puntos 1–5, cerrado):** `docs/ROADMAP.md`
+- **Roadmap (puntos 1–6, cerrado):** `docs/ROADMAP.md`
 - **Este archivo** es solo el índice/handoff; consulta esos documentos para el detalle.
 
 ## Mapa de código
 
 - `src/App.svelte`, `src/main.ts` — entrada + router hash (`#/` → Landing, `#/sala/<id>` → Room)
-- `src/routes/{Landing,Room,Game}.svelte` — páginas; `Room.svelte` contiene la lógica P2P agnóstica al juego (selector, hello/requestState/stateSync/action/rename, heartbeat 2 s, tick host 1 s, `electNewHost`)
+- `src/routes/{Landing,Room,Game}.svelte` — páginas; `Room.svelte` contiene la lógica P2P agnóstica al juego (hello/requestState/stateSync/action/rename, heartbeat 2 s, tick host 1 s, `electNewHost`; un solo juego, sin selector ni `?juego=`)
 - `src/components/{PlayerList,ShareLink,NameInput}.svelte` — UI lobby
 - `src/lib/net/{types,trysteroAdapter,room}.ts` — `Msg`, adapter Trystero (`appId='wg_template_v1_'+salaId`), `electNewHost`/`isRoomFull`
 - `src/lib/stores/{roomStore,gameStore}.ts` — `roomStore` (sala/peers/joinOrder/isHost) + `gameStore` (aplica `stateSync` solo si versión mayor)
 - `src/lib/game/{types,registry}.ts` — contrato `GameModule` y registry dinámico por `juegoId`
-- `src/lib/game/trivia/` — trivia configurable (número, segundos y categoría)
-- `src/lib/game/votacion/` — ejemplo mínimo de un juego nuevo; guía en `docs/NUEVO-JUEGO.md`
+- `src/lib/game/trivia/` — demo a reemplazar (configurable: número, segundos y categoría); guía en `docs/NUEVO-JUEGO.md`, derivación en `docs/NUEVO-REPO.md`
 - `src/lib/utils/{id,names}.ts` — `generateSalaId` (6 chars), `assignName` (`Jugador N`), `sanitizeName`
 - `vite.config.ts` — `base=VITE_BASE || '/wg_template/'`, `server/preview` con `host:true, strictPort:true` (devcontainer)
 - `.devcontainer/devcontainer.json` + `post-create.sh` — imagen `typescript-node:22` (trae node/npm/git, **no** `gh`; el script lo instala vía apt y luego corre `npm ci`), puertos 5173/4173
 - `.github/workflows/pages.yml` — build (`VITE_BASE=/wg_template/`) + `deploy-pages@v4`
-- `tests/unit/` — 24 tests; `tests/e2e/` — 6 casos, incluido P2P real con dos contextos
+- `tests/unit/` — 21 tests; `tests/e2e/` — 5 casos, incluido P2P real con dos contextos
 
 ## Comandos (Node 22)
 
 ```bash
 npm ci            # instalar (postCreate del devcontainer ya lo hace)
 npm run dev       # http://localhost:5173
-npm run test      # vitest run (16 tests)
+npm run test      # vitest run (21 tests)
 npm run check     # svelte-check + tsc
 npm run build     # dist/ para Pages
 npm run test:e2e  # Playwright; E2E_P2P=1 hace obligatorio el caso de trackers
@@ -51,6 +50,9 @@ npm run test:e2e  # Playwright; E2E_P2P=1 hace obligatorio el caso de trackers
 - ✅ Verificación local: `check` 0 errores · `test` 24/24 · `build` correcto ·
   `test:e2e` 6/6 (incluida conexión P2P real).
 - ✅ Roadmap 1–5 cerrado y publicado (`94570b2` en `origin/main`).
+- ✅ Punto 6: plantilla de un solo juego (fuera votación, selector y `?juego=`);
+  guía `docs/NUEVO-REPO.md`; verificación `check` 0 errores · `test` 21/21 ·
+  `build` correcto · `test:e2e` 5/5 (P2P real incluido).
 
 ## Entorno
 
@@ -62,4 +64,4 @@ npm run test:e2e  # Playwright; E2E_P2P=1 hace obligatorio el caso de trackers
 
 1. Lee `docs/ROADMAP.md` (puntos 1–5 cerrados) y revisa el diff local antes de modificar nada.
 2. Repite `check/test/build/test:e2e` si cambia código.
-3. Siguiente: ampliar con más juegos (`docs/NUEVO-JUEGO.md`) o mejoras del selector/config.
+3. Siguiente: derivar repos de juego con `docs/NUEVO-REPO.md`.

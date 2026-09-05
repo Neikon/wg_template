@@ -4,7 +4,7 @@ Plantilla base para juegos de fiesta multijugador en navegador. **Sin servidor n
 
 - **Stack:** Svelte + Vite + TypeScript + Trystero (WebRTC P2P via trackers públicos)
 - **Flujo:** Crear sala → compartir enlace `#/sala/<id>` → lobby → juego
-- **Demos incluidas:** trivia configurable y votación mínima
+- **Demo incluida:** trivia configurable (punto de partida a reemplazar)
 - **Host migration:** Si el anfitrión se va, el siguiente jugador toma el control sin perder estado
 
 ## Uso rápido
@@ -24,12 +24,11 @@ Alternativa: cambiar `src/lib/net/trysteroAdapter.ts` por PeerJS si prefieres.
 
 ## Crear tu propio juego
 
-Sigue la guía de tres pasos en [`docs/NUEVO-JUEGO.md`](docs/NUEVO-JUEGO.md). Incluye
-el contrato `GameModule`, las reglas del reducer, el registro, los tests y la prueba
-directa con `?juego=`. `src/lib/game/votacion/` es el ejemplo mínimo para copiar.
-
-El anfitrión elige cualquier juego registrado desde el lobby; la selección viaja en
-el enlace de invitación y se sincroniza por P2P.
+Este repo es una plantilla: cada juego vive en su propio repositorio.
+Sigue [`docs/NUEVO-REPO.md`](docs/NUEVO-REPO.md) para derivar un repo
+(`Use this template`), renombrarlo y sustituir la demo (trivia) por tu juego.
+El contrato `GameModule`, las reglas del reducer y los tests están en
+[`docs/NUEVO-JUEGO.md`](docs/NUEVO-JUEGO.md).
 
 ## Pruebas
 
@@ -55,7 +54,7 @@ La prueba P2P se salta si no logra alcanzar los trackers, salvo cuando `E2E_P2P=
 ```
 src/lib/net/      # P2P (Trystero adapter, helpers)
 src/lib/stores/   # roomStore, gameStore
-src/lib/game/     # contrato + registry + juegos trivia/votación
+src/lib/game/     # contrato + registry + trivia (demo a reemplazar)
 src/routes/       # Landing, Room, Game
 src/components/   # PlayerList, ShareLink, NameInput
 ```
@@ -66,4 +65,4 @@ src/components/   # PlayerList, ShareLink, NameInput
 - Host autoritativo, mensajes JSON pequeños
 - Sin persistencia (recargar pierde sala)
 
-Licencia MIT — clona y modifica libremente.
+Licencia MIT — usa este repo como plantilla (Use this template) y modifica libremente.

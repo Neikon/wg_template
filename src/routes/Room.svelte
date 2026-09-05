@@ -5,7 +5,7 @@
   import { assignName, sanitizeName } from '../lib/utils/names'
   import { electNewHost, isRoomFull } from '../lib/net/room'
   import { joinTrystero } from '../lib/net/trysteroAdapter'
-  import { DEFAULT_GAME_ID, getGameModule, getGameOptions } from '../lib/game/registry'
+  import { DEFAULT_GAME_ID, getGameModule } from '../lib/game/registry'
   import PlayerList from '../components/PlayerList.svelte'
   import ShareLink from '../components/ShareLink.svelte'
   import NameInput from '../components/NameInput.svelte'
@@ -14,8 +14,9 @@
   let salaId = ''
   let isHostParam = false
   let initialName = ''
+  // Plantilla de un solo juego: juegoId es siempre el registrado por defecto.
+  // El campo juegoId se mantiene en el protocolo para robustez entre versiones.
   let juegoId = DEFAULT_GAME_ID
-  const gameOptions = getGameOptions()
   let trystero: any = null
   let unsubRoom: any
   let unsubGame: any
@@ -38,7 +39,6 @@
     const q = new URLSearchParams(hash.split('?')[1] || '')
     isHostParam = q.get('host') === '1'
     initialName = q.get('name') ? decodeURIComponent(q.get('name')!) : ''
-    juegoId = q.get('juego') || DEFAULT_GAME_ID
   }
 
   function showToast(msg:string){
@@ -67,27 +67,6 @@
       gameStore.set(gameState)
       broadcastState()
     }
-  }
-
-  function updateGameInHash(nextJuegoId:string){
-    const [route, rawQuery = ''] = location.hash.split('?')
-    const query = new URLSearchParams(rawQuery)
-    query.set('juego', nextJuegoId)
-    history.replaceState(null, '', `${location.pathname}${location.search}${route}?${query}`)
-  }
-
-  function selectGame(event:Event){
-    if (!isHost || gameState.phase !== 'lobby') return
-    const nextJuegoId = (event.currentTarget as HTMLSelectElement).value
-    const game = getGameModule(nextJuegoId)
-    if (!game || nextJuegoId === juegoId) return
-    const nextVersion = (gameState.version ?? 0) + 1
-    juegoId = nextJuegoId
-    const nextState = game.createInitialState(peers)
-    gameState = { ...nextState, version: nextVersion }
-    gameStore.set(gameState)
-    updateGameInHash(juegoId)
-    broadcastState()
   }
 
   function startTimerAndHeartbeat(){
@@ -179,7 +158,6 @@
         const gameChanged = incomingJuegoId !== juegoId
         if (gameChanged) {
           juegoId = incomingJuegoId
-          updateGameInHash(juegoId)
         }
         // validar version
         if (!gameChanged && msg.version !== undefined && gameState.version !== undefined && msg.version <= gameState.version) {
@@ -324,22 +302,10 @@
       <button on:click={salir} style="background:var(--muted)">Salir</button>
     </div>
 
-    <ShareLink {salaId} {juegoId} />
+    <ShareLink {salaId} />
 
     <div style="display:grid;gap:1rem;margin-top:1rem">
       <div>
-        {#if isHost}
-          <div class="card" style="margin-bottom:1rem">
-            <label for="game-selector">Juego</label>
-            <select id="game-selector" value={juegoId} on:change={selectGame}>
-              {#each gameOptions as game}
-                <option value={game.id}>{game.nombre}</option>
-              {/each}
-            </select>
-          </div>
-        {:else}
-          <p class="muted">Juego: {getGameModule(juegoId)?.nombre ?? juegoId}</p>
-        {/if}
         <Game {juegoId} onAction={handleGameAction} />
       </div>
       <div>
