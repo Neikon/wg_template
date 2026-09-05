@@ -12,7 +12,6 @@ Red P2P con Trystero (`torrent`, trackers públicos, sin cuentas). Host-autorita
 
 - **Spec (diseño + §11 estado de implementación):** `docs/superpowers/specs/2026-09-04-wg-template-fiesta-design.md`
 - **Plan base (histórico):** `docs/superpowers/plans/2026-09-04-wg-template-fiesta-implementation.md`
-- **Roadmap (puntos 1–6, cerrado):** `docs/ROADMAP.md`
 - **Este archivo** es solo el índice/handoff; consulta esos documentos para el detalle.
 
 ## Mapa de código
@@ -62,6 +61,6 @@ npm run test:e2e  # Playwright; E2E_P2P=1 hace obligatorio el caso de trackers
 
 ## Al retomar
 
-1. Lee `docs/ROADMAP.md` (puntos 1–5 cerrados) y revisa el diff local antes de modificar nada.
+1. Revisa el diff local y `git log` antes de modificar nada.
 2. Repite `check/test/build/test:e2e` si cambia código.
 3. Siguiente: derivar repos de juego con `docs/NUEVO-REPO.md`.
