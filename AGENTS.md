@@ -17,9 +17,9 @@ Red P2P con Trystero (`torrent`, trackers públicos, sin cuentas). Host-autorita
 ## Mapa de código
 
 - `src/App.svelte`, `src/main.ts` — entrada + router hash (`#/` → Landing, `#/sala/<id>` → Room)
-- `src/routes/{Landing,Room,Game}.svelte` — páginas; `Room.svelte` contiene la lógica P2P agnóstica al juego (hello/requestState/stateSync/action/rename, heartbeat 2 s, tick host 1 s, `electNewHost`; un solo juego, sin selector ni `?juego=`)
+- `src/routes/{Landing,Room,Game}.svelte` — páginas; `Room.svelte` contiene la lógica P2P agnóstica al juego (hello/requestState/stateSync/action/rename, heartbeat 2 s, tick host 1 s, `electNewHost`; un solo juego, sin selector ni `?juego=`) + vigía de señalización (línea `Señalización X/Y`, aviso fantasma al host con recarga, recarga dura topada x2 del invitado atascado)
 - `src/components/{PlayerList,ShareLink,NameInput}.svelte` — UI lobby
-- `src/lib/net/{types,trysteroAdapter,room}.ts` — `Msg`, adapter Trystero (`appId='wg_template_v1_'+salaId`), `electNewHost`/`isRoomFull`
+- `src/lib/net/{types,trysteroAdapter,room,transport}.ts` — `Msg`, adapter Trystero (`appId='wg_template_v1_'+salaId`, 4 trackers verificados 2026-09-09, 5 STUN), `electNewHost`/`isRoomFull`, `relayStatus()` (sockets trackers); `scripts/patch-trystero.js` (postinstall) corrige la fuga del offer pool de trystero 0.20.1 (40 RTCPeerConnection fugadas por ciclo → sala fantasma a los minutos); hooks solo-e2e vía query del hash: `transport.trackerUrls()` acepta `?tracker=ws://…` (repetible) y el adapter `?lagMs=&lossPct=` (móvil lento simulado)
 - `src/lib/stores/{roomStore,gameStore}.ts` — `roomStore` (sala/peers/joinOrder/isHost) + `gameStore` (aplica `stateSync` solo si versión mayor)
 - `src/lib/game/{types,registry}.ts` — contrato `GameModule` y registry dinámico por `juegoId`
 - `src/lib/game/trivia/` — demo a reemplazar (configurable: número, segundos y categoría); guía en `docs/NUEVO-JUEGO.md`, derivación en `docs/NUEVO-REPO.md`
@@ -27,14 +27,14 @@ Red P2P con Trystero (`torrent`, trackers públicos, sin cuentas). Host-autorita
 - `vite.config.ts` — `base=VITE_BASE || '/wg_template/'`, `server/preview` con `host:true, strictPort:true` (devcontainer)
 - `.devcontainer/devcontainer.json` + `post-create.sh` — imagen `typescript-node:22` (trae node/npm/git, **no** `gh`; el script lo instala vía apt y luego corre `npm ci`), puertos 5173/4173
 - `.github/workflows/pages.yml` — build (`VITE_BASE=/wg_template/`) + `deploy-pages@v4`
-- `tests/unit/` — 21 tests; `tests/e2e/` — 5 casos, incluido P2P real con dos contextos
+- `tests/unit/` — 25 tests (21 previos + transporte 4); `tests/e2e/` — 11 casos: 5 previos (P2P real con dos contextos) + `multijugador.spec.ts` (salas P2P reales 5/10/15/20 escalonado + 15 en ráfaga + 8 con mitad lenta vía tracker local `bittorrent-tracker` devDep, con aserción `Señalización: 1/1`; `E2E_PUBLIC`/`E2E_AGE_MIN` bajo demanda; nota: 3 de los 6 trackers públicos fallan y la redundancia lo absorbe)
 
 ## Comandos (Node 22)
 
 ```bash
 npm ci            # instalar (postCreate del devcontainer ya lo hace)
 npm run dev       # http://localhost:5173
-npm run test      # vitest run (21 tests)
+npm run test      # vitest run (25 tests)
 npm run check     # svelte-check + tsc
 npm run build     # dist/ para Pages
 npm run test:e2e  # Playwright; E2E_P2P=1 hace obligatorio el caso de trackers
@@ -52,6 +52,11 @@ npm run test:e2e  # Playwright; E2E_P2P=1 hace obligatorio el caso de trackers
 - ✅ Punto 6: plantilla de un solo juego (fuera votación, selector y `?juego=`);
   guía `docs/NUEVO-REPO.md`; verificación `check` 0 errores · `test` 21/21 ·
   `build` correcto · `test:e2e` 5/5 (P2P real incluido).
+- ✅ Sala fantasma P2P (portado de wg_hipster, ver
+  `docs/2026-09-10-sala-fantasma-p2p.md`): poda a 4 trackers verificados,
+  `relayStatus()` + línea `Señalización X/Y` con aviso al host, curación del
+  invitado (recarga dura topada), parche postinstall de la fuga del offer
+  pool de Trystero, e2e multijugador real.
 
 ## Entorno
 

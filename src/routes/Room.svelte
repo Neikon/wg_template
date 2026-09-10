@@ -4,7 +4,7 @@
   import { gameStore } from '../lib/stores/gameStore'
   import { assignName, sanitizeName } from '../lib/utils/names'
   import { electNewHost, isRoomFull } from '../lib/net/room'
-  import { joinTrystero } from '../lib/net/trysteroAdapter'
+  import { joinTrystero, relayStatus } from '../lib/net/trysteroAdapter'
   import { DEFAULT_GAME_ID, getGameModule } from '../lib/game/registry'
   import PlayerList from '../components/PlayerList.svelte'
   import ShareLink from '../components/ShareLink.svelte'
@@ -31,6 +31,28 @@
   let timerInt: any = null
   let heartbeat: any = null
   const transportToLogicalPeer = new Map<string, string>()
+  // Señalización (trackers): X de Y sockets abiertos. Con 0 abiertos la sala
+  // es fantasma —la malla de datos vive pero nadie nuevo puede entrar—.
+  let relaysAbiertos = 0
+  let relaysTotal = 0
+  function actualizarRelays(){
+    try {
+      const st = relayStatus()
+      relaysTotal = st.length
+      relaysAbiertos = st.filter((s)=>s.open).length
+    } catch { /* sin red: se reintenta en el siguiente tick */ }
+  }
+  // Curación del invitado atascado: si tras 30 s solo se ve a sí mismo,
+  // recarga dura topada (sanea el pool global de Trystero; el rejoin en
+  // caliente no lo hace). Topada para no ciclar si la sala ya no existe.
+  let joinedAt = 0
+  let watch: any = null
+  const HARD_RELOAD_MS = 30000
+  const MAX_HARD_RELOADS = 2
+  const reloadKey = () => `wg_template:reloads:${salaId}`
+  const reloadsHechas = () => {
+    try { return parseInt(sessionStorage.getItem(reloadKey()) || '0', 10) || 0 } catch { return MAX_HARD_RELOADS }
+  }
 
   function parseHash(){
     const hash = location.hash // #/sala/abcd12?host=1&name=...
@@ -78,9 +100,10 @@
         handleAction({t:'tick'}, selfId)
       }
     }, 1000)
-    // heartbeat stateSync cada 2s si host
+    // heartbeat stateSync cada 2s si host (+ refresco del estado de trackers)
     heartbeat = setInterval(()=>{
       if (isHost) broadcastState()
+      actualizarRelays()
     }, 2000)
   }
 
@@ -248,7 +271,25 @@
       setTimeout(()=> trystero.send({t:'requestState', from: selfId}), 800)
     }
 
+    joinedAt = Date.now()
+    actualizarRelays()
+    // vigía del invitado atascado (limbo): solo se ve a sí mismo y no avanza
+    watch = setInterval(()=>{
+      if (peers.length > 1) {
+        try { sessionStorage.removeItem(reloadKey()) } catch {}
+        return
+      }
+      if (isHost) return
+      const edad = Date.now() - joinedAt
+      const sinSenal = relaysTotal > 0 && relaysAbiertos === 0
+      if ((edad > HARD_RELOAD_MS || (sinSenal && edad > 10000)) && reloadsHechas() < MAX_HARD_RELOADS) {
+        try { sessionStorage.setItem(reloadKey(), String(reloadsHechas() + 1)) } catch {}
+        location.reload()
+      }
+    }, 2000)
+
     return ()=>{
+      if (watch) clearInterval(watch)
       if (trystero) trystero.leave()
     }
   })
@@ -256,6 +297,7 @@
   onDestroy(()=>{
     if (unsubRoom) unsubRoom()
     if (unsubGame) unsubGame()
+    if (watch) clearInterval(watch)
     if (timerInt) clearInterval(timerInt)
     if (heartbeat) clearInterval(heartbeat)
     if (trystero) trystero.leave()
@@ -303,6 +345,16 @@
     </div>
 
     <ShareLink {salaId} />
+
+    {#if relaysTotal > 0}
+      <p class="muted" style="font-size:0.8rem;margin:0.4rem 0 0">Señalización: {relaysAbiertos}/{relaysTotal} trackers</p>
+    {/if}
+    {#if isHost && relaysTotal > 0 && relaysAbiertos === 0}
+      <div style="background:var(--error);color:white;padding:0.6rem 1rem;border-radius:8px;margin:0.6rem 0;display:flex;gap:0.6rem;align-items:center;justify-content:space-between;flex-wrap:wrap">
+        <span>Sin conexión con los trackers: ningún jugador nuevo puede entrar. Recarga la página para re-anunciar la sala.</span>
+        <button on:click={()=>location.reload()} style="background:white;color:var(--error);padding:0.3rem 0.7rem;font-size:0.85rem">Recargar</button>
+      </div>
+    {/if}
 
     <div style="display:grid;gap:1rem;margin-top:1rem">
       <div>
